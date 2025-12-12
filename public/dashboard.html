@@ -140,7 +140,7 @@
       <div class="bg-gray-50 rounded-lg p-6">
         <h3 class="text-gray-800 font-semibold mb-4">API Endpoints</h3>
         <p class="text-xs text-gray-600 mb-4">
-          <strong>Base URL:</strong> <code class="bg-gray-200 px-2 py-1 rounded">http://localhost:3001/api/v1</code>
+          <strong>Base URL:</strong> <code class="bg-gray-200 px-2 py-1 rounded" x-text="baseUrl + '/api/v1'"></code>
         </p>
 
         <div class="space-y-4">
@@ -153,7 +153,7 @@
             <p class="text-xs text-gray-600 mb-2">Get unread incoming messages</p>
             <div class="relative">
               <div class="bg-gray-900 text-gray-100 p-3 pr-20 rounded text-xs font-mono overflow-x-auto whitespace-nowrap">
-                curl -H "X-API-Key: <span x-text="apiKeyValue"></span>" http://localhost:3001/api/v1/inbox
+                curl -H "X-API-Key: <span x-text="apiKeyValue"></span>" <span x-text="baseUrl"></span>/api/v1/inbox
               </div>
               <button @click="copyCurl('inbox')"
                       :class="copiedButton === 'inbox' ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'"
@@ -173,7 +173,7 @@
             <p class="text-xs text-gray-600 mb-2">Reply to a message</p>
             <div class="relative">
               <div class="bg-gray-900 text-gray-100 p-3 pr-20 rounded text-xs font-mono overflow-x-auto whitespace-nowrap">
-                curl -X POST -H "X-API-Key: <span x-text="apiKeyValue"></span>" -H "Content-Type: application/json" -d '{"message":"Your reply"}' http://localhost:3001/api/v1/messages/1/reply
+                curl -X POST -H "X-API-Key: <span x-text="apiKeyValue"></span>" -H "Content-Type: application/json" -d '{"message":"Your reply"}' <span x-text="baseUrl"></span>/api/v1/messages/1/reply
               </div>
               <button @click="copyCurl('reply')"
                       :class="copiedButton === 'reply' ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'"
@@ -193,7 +193,7 @@
             <p class="text-xs text-gray-600 mb-2">Get connection status</p>
             <div class="relative">
               <div class="bg-gray-900 text-gray-100 p-3 pr-20 rounded text-xs font-mono overflow-x-auto whitespace-nowrap">
-                curl -H "X-API-Key: <span x-text="apiKeyValue"></span>" http://localhost:3001/api/v1/status
+                curl -H "X-API-Key: <span x-text="apiKeyValue"></span>" <span x-text="baseUrl"></span>/api/v1/status
               </div>
               <button @click="copyCurl('status')"
                       :class="copiedButton === 'status' ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'"
@@ -228,6 +228,7 @@
         copiedButton: null,
         webhookUrl: '',
         webhookInput: '',
+        baseUrl: window.location.origin,
 
         init() {
           if (!this.apiKey || !this.dashboardAuth) {
@@ -312,9 +313,9 @@
 
         async copyCurl(endpoint) {
           const commands = {
-            inbox: `curl -H "X-API-Key: ${this.apiKeyValue}" http://localhost:3001/api/v1/inbox`,
-            reply: `curl -X POST -H "X-API-Key: ${this.apiKeyValue}" -H "Content-Type: application/json" -d '{"message":"Your reply"}' http://localhost:3001/api/v1/messages/1/reply`,
-            status: `curl -H "X-API-Key: ${this.apiKeyValue}" http://localhost:3001/api/v1/status`
+            inbox: `curl -H "X-API-Key: ${this.apiKeyValue}" ${this.baseUrl}/api/v1/inbox`,
+            reply: `curl -X POST -H "X-API-Key: ${this.apiKeyValue}" -H "Content-Type: application/json" -d '{"message":"Your reply"}' ${this.baseUrl}/api/v1/messages/1/reply`,
+            status: `curl -H "X-API-Key: ${this.apiKeyValue}" ${this.baseUrl}/api/v1/status`
           };
 
           try {
