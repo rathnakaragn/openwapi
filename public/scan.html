@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan QR Code - OpenWAPI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-5">
+  <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-10" x-data="scanApp()" x-init="init">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">WhatsApp Connection</h1>
+    <p class="text-gray-600 text-sm mb-8">Scan QR Code to Connect</p>
+
+    <!-- Error Message -->
+    <div x-show="error" x-transition class="bg-red-50 text-red-600 p-4 rounded-lg mb-5 text-sm">
+      <span x-text="error"></span>
+    </div>
+
+    <!-- Success Message -->
+    <div x-show="success" x-transition class="bg-green-50 text-green-600 p-4 rounded-lg mb-5 text-sm">
+      <span x-text="success"></span>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      <p class="text-gray-600 mt-4">Loading QR code...</p>
+    </div>
+
+    <!-- QR Code -->
+    <div x-show="qrCode && !loading" x-transition class="text-center">
+      <div class="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block mb-4">
+        <img :src="qrCode" alt="WhatsApp QR Code" class="max-w-xs w-full">
+      </div>
+      <div class="text-sm text-gray-600 space-y-2 mb-6">
+        <p>1. Open WhatsApp on your phone</p>
+        <p>2. Tap <strong>Menu</strong> or <strong>Settings</strong> > <strong>Linked Devices</strong></p>
+        <p>3. Tap <strong>Link a Device</strong> and scan this QR code</p>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex gap-3 mt-6">
+      <button
+        @click="window.location.href='/dashboard.html'"
+        class="flex-1 bg-emerald-600 text-white font-semibold py-3 rounded-lg hover:bg-emerald-700 hover:shadow-lg transform hover:-translate-y-0.5 transition">
+        Go to Dashboard
+      </button>
+      <button
+        @click="location.reload()"
+        class="flex-1 bg-gray-700 text-white font-semibold py-3 rounded-lg hover:bg-gray-800 transition">
+        Refresh QR Code
+      </button>
+    </div>
+  </div>
+
+  <script>
+    function scanApp() {
+      return {
+        qrCode: null,
+        error: '',
+        success: '',
+        loading: true,
+        apiKey: localStorage.getItem('apiKey'),
+        statusCheckInterval: null,
+
+        init() {
+          if (!this.apiKey) {
+            window.location.href = '/login.html';
+            return;
+          }
+          this.loadQRCode();
+        },
+
+        async loadQRCode() {
+          try {
+            const response = await fetch('/api/v1/qr');
+            const data = await response.json();
+
+            this.loading = false;
+
+            if (!data.success) {
+              if (data.error === 'Already connected to WhatsApp') {
+                this.success = 'Already connected! Redirecting to dashboard...';
+                setTimeout(() => {
+                  window.location.href = '/dashboard.html';
+                }, 2000);
+              } else {
+                this.error = data.error;
+              }
+              return;
+            }
+
+            this.qrCode = data.data.qr;
+            this.startStatusCheck();
+          } catch (error) {
+            this.loading = false;
+            this.error = 'Failed to load QR code. Please refresh the page.';
+          }
+        },
+
+        async checkConnectionStatus() {
+          try {
+            const response = await fetch('/api/v1/status', {
+              headers: {
+                'X-API-Key': this.apiKey
+              }
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.data.connected) {
+              clearInterval(this.statusCheckInterval);
+              this.success = 'Connected successfully! Redirecting to dashboard...';
+              this.qrCode = null;
+
+              setTimeout(() => {
+                window.location.href = '/dashboard.html';
+              }, 2000);
+            }
+          } catch (error) {
+            console.error('Status check error:', error);
+          }
+        },
+
+        startStatusCheck() {
+          this.statusCheckInterval = setInterval(() => this.checkConnectionStatus(), 3000);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - OpenWAPI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-5">
+  <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-8" x-data="statusApp()" x-init="init">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">OpenWAPI Dashboard</h1>
+    <p class="text-gray-600 text-sm mb-6">Connection Status & Configuration</p>
+
+    <!-- Error/Success Messages -->
+    <div x-show="error" x-transition class="bg-red-50 text-red-600 p-4 rounded-lg mb-5 text-sm">
+      <span x-text="error"></span>
+    </div>
+    <div x-show="success" x-transition class="bg-green-50 text-green-600 p-4 rounded-lg mb-5 text-sm">
+      <span x-text="success"></span>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      <p class="text-gray-600 mt-4">Loading status...</p>
+    </div>
+
+    <!-- Main Content -->
+    <div x-show="!loading" x-transition>
+      <!-- Status Card -->
+      <div class="bg-gray-50 rounded-lg p-6 mb-6">
+        <div class="space-y-4">
+          <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+            <span class="text-gray-700 font-medium">Connection Status</span>
+            <span :class="connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                  class="px-3 py-1 rounded-full text-xs font-semibold">
+              <span x-text="connected ? 'Connected' : 'Disconnected'"></span>
+            </span>
+          </div>
+          <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+            <span class="text-gray-700 font-medium">Phone Number</span>
+            <span class="text-gray-900 font-semibold" x-text="phone || '-'"></span>
+          </div>
+          <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+            <span class="text-gray-700 font-medium">Total Messages</span>
+            <span class="text-gray-900 font-semibold" x-text="messageCount"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-700 font-medium">New Messages</span>
+            <span class="text-emerald-600 text-lg font-bold" x-text="newMessageCount"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Key Card -->
+      <div class="bg-gray-50 rounded-lg p-6 mb-6">
+        <h3 class="text-gray-800 font-semibold mb-3">API Key</h3>
+        <div class="bg-gray-100 p-4 rounded-lg font-mono text-xs break-all mb-3" x-text="apiKeyValue || 'Loading...'"></div>
+        <p class="text-gray-600 text-xs">
+          Use this API key in the <strong>X-API-Key</strong> header for all API requests.
+        </p>
+      </div>
+
+      <!-- Webhook Configuration Card -->
+      <div class="bg-gray-50 rounded-lg p-6 mb-6">
+        <h3 class="text-gray-800 font-semibold mb-3">Webhook Configuration</h3>
+        <p class="text-gray-600 text-xs mb-4">
+          Get notified when new messages are received. Configure a webhook URL to receive real-time POST notifications.
+        </p>
+
+        <!-- Current Webhook Status -->
+        <div x-show="webhookUrl" class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <p class="text-xs text-green-700 font-semibold mb-1">Active Webhook</p>
+              <p class="text-xs text-green-800 font-mono break-all" x-text="webhookUrl"></p>
+            </div>
+            <button @click="deleteWebhook"
+                    class="ml-2 bg-red-500 text-white text-xs px-3 py-1 rounded hover:bg-red-600 transition">
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <div x-show="!webhookUrl" class="bg-gray-100 border border-gray-200 rounded-lg p-3 mb-3">
+          <p class="text-xs text-gray-600">No webhook configured</p>
+        </div>
+
+        <!-- Webhook Form -->
+        <div class="space-y-3">
+          <input type="url"
+                 x-model="webhookInput"
+                 placeholder="https://your-server.com/webhook"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <button @click="saveWebhook"
+                  :disabled="!webhookInput"
+                  :class="!webhookInput ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'"
+                  class="w-full text-white font-semibold py-2 rounded-lg transition">
+            Save Webhook
+          </button>
+        </div>
+
+        <!-- Webhook Payload Info -->
+        <div class="mt-4 bg-gray-100 rounded-lg p-3">
+          <p class="text-xs text-gray-700 font-semibold mb-2">Webhook Payload Format:</p>
+          <pre class="text-xs text-gray-800 font-mono overflow-x-auto">{
+  "event": "message.received",
+  "message": {
+    "id": 123,
+    "from": "1234567890@s.whatsapp.net",
+    "text": "Message content",
+    "timestamp": "2025-12-12T14:30:00.000Z"
+  }
+}</pre>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <button @click="window.location.href='/scan.html'"
+                class="bg-emerald-600 text-white font-semibold py-3 rounded-lg hover:bg-emerald-700 hover:shadow-lg transform hover:-translate-y-0.5 transition">
+          Scan QR Code
+        </button>
+        <button @click="logoutWhatsApp"
+                class="bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition">
+          Logout WhatsApp
+        </button>
+        <button @click="location.reload()"
+                class="bg-gray-700 text-white font-semibold py-3 rounded-lg hover:bg-gray-800 transition">
+          Refresh Status
+        </button>
+        <button @click="dashboardLogout"
+                class="bg-gray-700 text-white font-semibold py-3 rounded-lg hover:bg-gray-800 transition">
+          Dashboard Logout
+        </button>
+      </div>
+
+      <!-- API Endpoints -->
+      <div class="bg-gray-50 rounded-lg p-6">
+        <h3 class="text-gray-800 font-semibold mb-4">API Endpoints</h3>
+        <p class="text-xs text-gray-600 mb-4">
+          <strong>Base URL:</strong> <code class="bg-gray-200 px-2 py-1 rounded">http://localhost:3001/api/v1</code>
+        </p>
+
+        <div class="space-y-4">
+          <!-- GET /inbox -->
+          <div class="border-b border-gray-200 pb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">GET</span>
+              <code class="text-sm font-semibold">/inbox</code>
+            </div>
+            <p class="text-xs text-gray-600 mb-2">Get unread incoming messages</p>
+            <div class="relative">
+              <div class="bg-gray-900 text-gray-100 p-3 pr-20 rounded text-xs font-mono overflow-x-auto whitespace-nowrap">
+                curl -H "X-API-Key: <span x-text="apiKeyValue"></span>" http://localhost:3001/api/v1/inbox
+              </div>
+              <button @click="copyCurl('inbox')"
+                      :class="copiedButton === 'inbox' ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                      class="absolute right-2 top-2 text-white text-xs px-3 py-1 rounded transition">
+                <span x-show="copiedButton !== 'inbox'">Copy</span>
+                <span x-show="copiedButton === 'inbox'">Copied</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- POST /messages/:id/reply -->
+          <div class="border-b border-gray-200 pb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">POST</span>
+              <code class="text-sm font-semibold">/messages/:id/reply</code>
+            </div>
+            <p class="text-xs text-gray-600 mb-2">Reply to a message</p>
+            <div class="relative">
+              <div class="bg-gray-900 text-gray-100 p-3 pr-20 rounded text-xs font-mono overflow-x-auto whitespace-nowrap">
+                curl -X POST -H "X-API-Key: <span x-text="apiKeyValue"></span>" -H "Content-Type: application/json" -d '{"message":"Your reply"}' http://localhost:3001/api/v1/messages/1/reply
+              </div>
+              <button @click="copyCurl('reply')"
+                      :class="copiedButton === 'reply' ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                      class="absolute right-2 top-2 text-white text-xs px-3 py-1 rounded transition">
+                <span x-show="copiedButton !== 'reply'">Copy</span>
+                <span x-show="copiedButton === 'reply'">Copied</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- GET /status -->
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">GET</span>
+              <code class="text-sm font-semibold">/status</code>
+            </div>
+            <p class="text-xs text-gray-600 mb-2">Get connection status</p>
+            <div class="relative">
+              <div class="bg-gray-900 text-gray-100 p-3 pr-20 rounded text-xs font-mono overflow-x-auto whitespace-nowrap">
+                curl -H "X-API-Key: <span x-text="apiKeyValue"></span>" http://localhost:3001/api/v1/status
+              </div>
+              <button @click="copyCurl('status')"
+                      :class="copiedButton === 'status' ? 'bg-green-600 hover:bg-green-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                      class="absolute right-2 top-2 text-white text-xs px-3 py-1 rounded transition">
+                <span x-show="copiedButton !== 'status'">Copy</span>
+                <span x-show="copiedButton === 'status'">Copied</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-gray-500 text-xs text-center mt-6">
+        <strong>API Documentation:</strong> See README.md
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function statusApp() {
+      return {
+        loading: true,
+        error: '',
+        success: '',
+        connected: false,
+        phone: null,
+        messageCount: 0,
+        newMessageCount: 0,
+        apiKeyValue: '',
+        apiKey: localStorage.getItem('apiKey'),
+        dashboardAuth: localStorage.getItem('dashboardAuth'),
+        copiedButton: null,
+        webhookUrl: '',
+        webhookInput: '',
+
+        init() {
+          if (!this.apiKey || !this.dashboardAuth) {
+            window.location.href = '/login.html';
+            return;
+          }
+          this.loadStatus();
+          this.loadWebhook();
+        },
+
+        async loadStatus() {
+          try {
+            // Get status
+            const statusResponse = await fetch('/api/v1/status', {
+              headers: { 'X-API-Key': this.apiKey }
+            });
+            const statusData = await statusResponse.json();
+
+            if (!statusData.success) {
+              throw new Error(statusData.error || 'Failed to load status');
+            }
+
+            this.connected = statusData.data.connected;
+            this.phone = statusData.data.phone;
+            this.messageCount = statusData.data.messageCount || 0;
+
+            // Get new messages count
+            const inboxResponse = await fetch('/api/v1/inbox', {
+              headers: { 'X-API-Key': this.apiKey }
+            });
+            const inboxData = await inboxResponse.json();
+            this.newMessageCount = inboxData.success ? inboxData.data.length : 0;
+
+            // Get API key from config
+            const configResponse = await fetch('/api/v1/config', {
+              headers: { 'Authorization': `Basic ${this.dashboardAuth}` }
+            });
+            const configData = await configResponse.json();
+
+            if (configData.success && configData.data.apiKey) {
+              this.apiKeyValue = configData.data.apiKey;
+            }
+
+            this.loading = false;
+          } catch (error) {
+            this.loading = false;
+            this.error = error.message || 'Failed to load status';
+          }
+        },
+
+        async logoutWhatsApp() {
+          if (!confirm('Are you sure you want to logout from WhatsApp? You will need to scan the QR code again.')) {
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/v1/logout', {
+              method: 'POST',
+              headers: { 'X-API-Key': this.apiKey }
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || 'Logout failed');
+            }
+
+            this.success = 'Logged out successfully! Redirecting...';
+            setTimeout(() => {
+              window.location.href = '/scan.html';
+            }, 2000);
+          } catch (error) {
+            this.error = error.message || 'Failed to logout';
+          }
+        },
+
+        dashboardLogout() {
+          localStorage.removeItem('apiKey');
+          localStorage.removeItem('dashboardAuth');
+          window.location.href = '/login.html';
+        },
+
+        async copyCurl(endpoint) {
+          const commands = {
+            inbox: `curl -H "X-API-Key: ${this.apiKeyValue}" http://localhost:3001/api/v1/inbox`,
+            reply: `curl -X POST -H "X-API-Key: ${this.apiKeyValue}" -H "Content-Type: application/json" -d '{"message":"Your reply"}' http://localhost:3001/api/v1/messages/1/reply`,
+            status: `curl -H "X-API-Key: ${this.apiKeyValue}" http://localhost:3001/api/v1/status`
+          };
+
+          try {
+            await navigator.clipboard.writeText(commands[endpoint]);
+            this.copiedButton = endpoint;
+            this.success = 'Copied to clipboard!';
+            setTimeout(() => {
+              this.success = '';
+              this.copiedButton = null;
+            }, 2000);
+          } catch (err) {
+            this.error = 'Failed to copy to clipboard';
+            setTimeout(() => {
+              this.error = '';
+            }, 2000);
+          }
+        },
+
+        async loadWebhook() {
+          try {
+            const response = await fetch('/api/v1/webhook', {
+              headers: { 'Authorization': `Basic ${this.dashboardAuth}` }
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.data) {
+              this.webhookUrl = data.data.url;
+              this.webhookInput = data.data.url;
+            } else {
+              this.webhookUrl = '';
+              this.webhookInput = '';
+            }
+          } catch (error) {
+            console.error('Failed to load webhook:', error);
+          }
+        },
+
+        async saveWebhook() {
+          if (!this.webhookInput) {
+            this.error = 'Please enter a webhook URL';
+            setTimeout(() => { this.error = ''; }, 3000);
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/v1/webhook', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${this.dashboardAuth}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ url: this.webhookInput })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || 'Failed to save webhook');
+            }
+
+            this.webhookUrl = this.webhookInput;
+            this.success = 'Webhook configured successfully!';
+            setTimeout(() => { this.success = ''; }, 3000);
+          } catch (error) {
+            this.error = error.message || 'Failed to save webhook';
+            setTimeout(() => { this.error = ''; }, 3000);
+          }
+        },
+
+        async deleteWebhook() {
+          if (!confirm('Are you sure you want to delete the webhook?')) {
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/v1/webhook', {
+              method: 'DELETE',
+              headers: { 'Authorization': `Basic ${this.dashboardAuth}` }
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || 'Failed to delete webhook');
+            }
+
+            this.webhookUrl = '';
+            this.webhookInput = '';
+            this.success = 'Webhook deleted successfully!';
+            setTimeout(() => { this.success = ''; }, 3000);
+          } catch (error) {
+            this.error = error.message || 'Failed to delete webhook';
+            setTimeout(() => { this.error = ''; }, 3000);
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "name": "openwapi",
+  "version": "1.0.0",
+  "description": "OpenWAPI - Open WhatsApp API for automated message handling",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "NODE_ENV=development nodemon --watch app.js --watch src/ --watch .env --ext js,json --ignore tests/ --ignore node_modules/ --ignore auth_info/ --ignore *.db app.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop openwapi",
+    "pm2:restart": "pm2 restart openwapi",
+    "pm2:logs": "pm2 logs openwapi"
+  },
+  "keywords": [
+    "whatsapp",
+    "api",
+    "baileys",
+    "automation",
+    "messaging"
+  ],
+  "author": "Engineering Team",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "better-sqlite3": "^12.5.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "pino": "^8.16.0",
+    "pino-pretty": "^10.2.3",
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.1.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  }
+}

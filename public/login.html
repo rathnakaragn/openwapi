@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - OpenWAPI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-5">
+  <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-10" x-data="loginApp()">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">OpenWAPI</h1>
+    <p class="text-gray-600 text-sm mb-8">Dashboard Login</p>
+
+    <!-- Error Message -->
+    <div x-show="error" x-transition class="bg-red-50 text-red-600 p-4 rounded-lg mb-5 text-sm">
+      <span x-text="error"></span>
+    </div>
+
+    <!-- Login Form -->
+    <form @submit.prevent="login">
+      <div class="mb-5">
+        <label class="block text-gray-700 text-sm font-semibold mb-2">Username</label>
+        <input
+          type="text"
+          x-model="username"
+          required
+          autocomplete="username"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+          placeholder="Enter username">
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-gray-700 text-sm font-semibold mb-2">Password</label>
+        <input
+          type="password"
+          x-model="password"
+          required
+          autocomplete="current-password"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+          placeholder="Enter password">
+      </div>
+
+      <button
+        type="submit"
+        :disabled="loading"
+        class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-lg hover:bg-emerald-700 hover:shadow-lg transform hover:-translate-y-0.5 transition disabled:opacity-60 disabled:cursor-not-allowed">
+        <span x-show="!loading">Login</span>
+        <span x-show="loading">Logging in...</span>
+      </button>
+    </form>
+
+    <p class="text-gray-600 text-xs text-center mt-6">
+      Default: <strong>admin / admin123</strong><br>
+      Change via .env: DASHBOARD_USER / DASHBOARD_PASSWORD
+    </p>
+  </div>
+
+  <script>
+    function loginApp() {
+      return {
+        username: '',
+        password: '',
+        error: '',
+        loading: false,
+
+        async login() {
+          this.error = '';
+          this.loading = true;
+
+          try {
+            const credentials = btoa(`${this.username}:${this.password}`);
+
+            const response = await fetch('/api/v1/config', {
+              headers: {
+                'Authorization': `Basic ${credentials}`
+              }
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || 'Login failed');
+            }
+
+            // Store API key and credentials
+            localStorage.setItem('apiKey', data.data.apiKey);
+            localStorage.setItem('dashboardAuth', credentials);
+
+            // Redirect based on connection status
+            if (data.data.connected) {
+              window.location.href = '/dashboard.html';
+            } else {
+              window.location.href = '/scan.html';
+            }
+          } catch (error) {
+            this.error = error.message || 'Login failed. Please check your credentials.';
+            this.loading = false;
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
