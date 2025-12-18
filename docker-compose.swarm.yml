@@ -1,7 +1,7 @@
 services:
   openwapi:
-    # Use pre-built image (build and push before deploying)
-    image: openwapi:1.0
+    # Image from GitHub Container Registry (auto-updated by CI/CD)
+    image: ghcr.io/rathnakara/openwapi:latest
 
     ports:
       - target: 3001
