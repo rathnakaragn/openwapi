@@ -13,7 +13,6 @@ Open WhatsApp API - Self-hosted solution for automated message handling. Built w
 - **IST Timezone**: All timestamps saved in Indian Standard Time (24-hour format)
 - **Session Persistence**: Multi-file auth state storage
 - **Auto-reconnection**: Automatic reconnection with exponential backoff
-- **Docker Ready**: Full Docker and Docker Swarm support
 - **Production Ready**: PM2 configuration, health checks, graceful shutdown
 - **Test Suite**: Comprehensive Jest tests (45 test cases)
 
@@ -34,34 +33,12 @@ nano .env
 
 ### 2. Start Server
 
-**Option A: Docker Compose (Recommended)**
-```bash
-# Start the API
-docker-compose up -d
-
-# View logs
-docker-compose logs -f openwapi
-
-# Stop the API
-docker-compose down
-```
-
-**Option B: Direct Node.js**
 ```bash
 # Development mode
 npm start
 
 # Production with PM2
 npm run pm2:start
-```
-
-**Option C: Docker (Manual)**
-```bash
-docker build -t openwapi:1.0 .
-docker run -d -p 3001:3001 \
-  -v openwapi-data:/app/data \
-  --name openwapi \
-  openwapi:1.0
 ```
 
 ### 3. Connect WhatsApp
@@ -143,9 +120,6 @@ openwapi/
 ├── package.json                # Dependencies & scripts
 ├── .env.example                # Environment template
 │
-├── docker-compose.yml          # Docker Compose config
-├── docker-compose.swarm.yml    # Docker Swarm production config
-├── Dockerfile                  # Docker image build
 ├── ecosystem.config.js         # PM2 process manager config
 │
 ├── src/
@@ -186,7 +160,6 @@ openwapi/
 | **QR Codes** | qrcode | QR code generation |
 | **Process Manager** | PM2 | Production process management |
 | **Testing** | Jest + Supertest | Unit & integration tests |
-| **Container** | Docker + Docker Swarm | Containerization & orchestration |
 
 ## Configuration
 
@@ -203,94 +176,6 @@ Environment variables (see `.env.example`):
 | `NODE_ENV` | development | Environment mode (development/production) |
 
 **Note**: API key is auto-generated on first start and stored in the database.
-
-## Docker Deployment
-
-### Using Docker Compose (Recommended)
-
-**Basic Setup:**
-```bash
-# Start the service
-docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f openwapi
-
-# Stop service
-docker-compose down
-```
-
-**Custom Configuration:**
-1. Copy and edit `docker-compose.yml`
-2. Update environment variables:
-   - `DASHBOARD_USER` - Change default username
-   - `DASHBOARD_PASSWORD` - Change default password
-   - **Note:** API key is auto-generated, no need to configure
-3. Restart: `docker-compose up -d`
-
-**Getting Your API Key:**
-```bash
-# Option 1: From dashboard
-# Login at http://localhost:3001/login.html
-
-# Option 2: Via API
-curl -u admin:admin123 http://localhost:3001/api/v1/config
-
-# Option 3: From Docker logs (shown on first start)
-docker-compose logs openwapi | grep "API Key:"
-```
-
-**Data Persistence:**
-- All data stored in Docker volume `openwapi-data`
-- Includes: database, WhatsApp session, images
-- Backup: `docker run --rm -v openwapi-data:/data -v $(pwd):/backup alpine tar czf /backup/openwapi-backup.tar.gz -C /data .`
-- Restore: `docker run --rm -v openwapi-data:/data -v $(pwd):/backup alpine tar xzf /backup/openwapi-backup.tar.gz -C /data`
-
-### Docker Swarm Deployment
-
-For production clusters, use the Swarm-compatible configuration:
-
-**Prerequisites:**
-```bash
-# Initialize Swarm (if not already)
-docker swarm init
-
-# Build and tag the image
-docker build -t openwapi:1.0 .
-
-# Optional: Push to registry
-docker tag openwapi:1.0 your-registry/openwapi:1.0
-docker push your-registry/openwapi:1.0
-```
-
-**Deploy to Swarm:**
-```bash
-# Deploy the stack
-docker stack deploy -c docker-compose.swarm.yml openwapi
-
-# Check status
-docker stack ps openwapi
-
-# View logs
-docker service logs -f openwapi_openwapi
-
-# Scale service (if needed)
-docker service scale openwapi_openwapi=1
-
-# Remove stack
-docker stack rm openwapi
-```
-
-**Swarm Features:**
-- Auto-restart on failure
-- Rolling updates
-- Automatic rollback
-- Resource limits (512MB RAM, 1 CPU)
-- Health monitoring
-- High availability (when using multiple nodes)
 
 ## Webhooks
 
