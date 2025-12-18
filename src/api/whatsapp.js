@@ -173,7 +173,7 @@ async function initializeWhatsApp(database, logger, sessionPath = './session') {
               const filename = `${messageId}.jpg`;
               const filepath = path.join(mediaPath, filename);
               fs.writeFileSync(filepath, imageBuffer);
-              mediaUrl = filepath;
+              mediaUrl = filename;  // Store only filename, not full path
 
               // Update message with media URL
               database.prepare('UPDATE messages SET media_url = ? WHERE id = ?').run(mediaUrl, messageId);
