@@ -303,7 +303,7 @@ function createRoutes(database, whatsappState, config, logger) {
     }
 
     try {
-      let mediaType = null;
+      let mediaType = 'text';
       let mediaUrl = null;
 
       if (image) {

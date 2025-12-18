@@ -142,7 +142,7 @@ async function initializeWhatsApp(database, logger, sessionPath = './session') {
         // Only store incoming messages (not from us)
         if (!msg.key.fromMe && (text || imageMessage)) {
           try {
-            let mediaType = null;
+            let mediaType = 'text';
             let mediaUrl = null;
             let imageBuffer = null;
 
