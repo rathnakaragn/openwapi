@@ -247,6 +247,8 @@ function createRoutes(database, whatsappState, config, logger) {
           phone,
           message,
           reply_status as status,
+          media_type,
+          media_url,
           created_at as timestamp
         FROM messages
         WHERE direction = 'incoming' AND reply_status = 'unread'
@@ -268,15 +270,17 @@ function createRoutes(database, whatsappState, config, logger) {
   });
 
   // 7. Reply to Message (API Key)
+  // Supports text-only, image-only, or text+image
+  // Image can be base64 string or URL
   router.post('/messages/:id/reply', authenticateApiKey(database), async (req, res) => {
-    const { message } = req.body;
+    const { message, image } = req.body;
     const messageId = req.params.id;
 
-    // Validation
-    if (!message) {
+    // Validation - at least message or image required
+    if (!message && !image) {
       return res.status(400).json({
         success: false,
-        error: 'Message is required'
+        error: 'Message or image is required'
       });
     }
 
@@ -299,19 +303,46 @@ function createRoutes(database, whatsappState, config, logger) {
     }
 
     try {
-      // Send reply via Baileys
-      await whatsappState.sock.sendMessage(
-        originalMessage.phone,
-        { text: message }
-      );
+      let mediaType = null;
+      let mediaUrl = null;
+
+      if (image) {
+        // Determine if image is URL or base64
+        let imageContent;
+        if (image.startsWith('http://') || image.startsWith('https://')) {
+          imageContent = { url: image };
+          mediaUrl = image;
+        } else {
+          // Assume base64
+          imageContent = Buffer.from(image, 'base64');
+          mediaUrl = 'base64';
+        }
+
+        mediaType = 'image';
+
+        // Send image reply via Baileys
+        await whatsappState.sock.sendMessage(
+          originalMessage.phone,
+          {
+            image: imageContent,
+            caption: message || ''
+          }
+        );
+      } else {
+        // Send text-only reply via Baileys
+        await whatsappState.sock.sendMessage(
+          originalMessage.phone,
+          { text: message }
+        );
+      }
 
       // Store outgoing message
-      insertMessage(database, 'outgoing', originalMessage.phone, message, 'sent');
+      insertMessage(database, 'outgoing', originalMessage.phone, message || '', 'sent', mediaType, mediaUrl);
 
       // Update original message status
       updateMessageStatus(database, messageId, 'replied');
 
-      logger.info('Reply sent', { messageId, to: originalMessage.phone });
+      logger.info('Reply sent', { messageId, to: originalMessage.phone, type: mediaType || 'text' });
 
       res.json({
         success: true,

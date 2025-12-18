@@ -238,14 +238,14 @@ describe('API Routes', () => {
       expect(res.status).toBe(401);
     });
 
-    test('should require message field', async () => {
+    test('should require message or image field', async () => {
       const res = await request(app)
         .post(`/api/v1/messages/${messageId}/reply`)
         .set('X-API-Key', apiKey)
         .send({});
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe('Message is required');
+      expect(res.body.error).toBe('Message or image is required');
     });
 
     test('should return error for non-existent message', async () => {
@@ -267,6 +267,67 @@ describe('API Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(whatsappState.sock.sendMessage).toHaveBeenCalled();
+    });
+
+    test('should send image reply with URL', async () => {
+      const res = await request(app)
+        .post(`/api/v1/messages/${messageId}/reply`)
+        .set('X-API-Key', apiKey)
+        .send({
+          message: 'Check this image',
+          image: 'https://example.com/image.jpg'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(whatsappState.sock.sendMessage).toHaveBeenCalledWith(
+        '123@s.whatsapp.net',
+        expect.objectContaining({
+          image: { url: 'https://example.com/image.jpg' },
+          caption: 'Check this image'
+        })
+      );
+    });
+
+    test('should send image reply with base64', async () => {
+      const base64Image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+      const res = await request(app)
+        .post(`/api/v1/messages/${messageId}/reply`)
+        .set('X-API-Key', apiKey)
+        .send({
+          message: 'Here is the image',
+          image: base64Image
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(whatsappState.sock.sendMessage).toHaveBeenCalledWith(
+        '123@s.whatsapp.net',
+        expect.objectContaining({
+          image: expect.any(Buffer),
+          caption: 'Here is the image'
+        })
+      );
+    });
+
+    test('should send image-only reply without caption', async () => {
+      const res = await request(app)
+        .post(`/api/v1/messages/${messageId}/reply`)
+        .set('X-API-Key', apiKey)
+        .send({
+          image: 'https://example.com/photo.png'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(whatsappState.sock.sendMessage).toHaveBeenCalledWith(
+        '123@s.whatsapp.net',
+        expect.objectContaining({
+          image: { url: 'https://example.com/photo.png' },
+          caption: ''
+        })
+      );
     });
   });
 

@@ -51,20 +51,43 @@ function initializeDatabase(dbPath = './messages.db') {
 }
 
 /**
+ * Get current timestamp in IST (24-hour format)
+ * @returns {string} Timestamp in format 'YYYY-MM-DD HH:MM:SS'
+ */
+function getISTTimestamp() {
+  const now = new Date();
+  // Convert to IST (UTC+5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istTime = new Date(now.getTime() + istOffset);
+
+  const year = istTime.getUTCFullYear();
+  const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(istTime.getUTCDate()).padStart(2, '0');
+  const hours = String(istTime.getUTCHours()).padStart(2, '0');
+  const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(istTime.getUTCSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
  * Insert a new message into the database
  * @param {Database} db - Database instance
  * @param {string} direction - 'incoming' or 'outgoing'
  * @param {string} phone - Phone number with WhatsApp suffix
  * @param {string} message - Message text
  * @param {string} status - Message status
+ * @param {string|null} mediaType - Type of media ('image', etc.) or null
+ * @param {string|null} mediaUrl - Path to media file or URL, or null
  * @returns {object} Insert result
  */
-function insertMessage(db, direction, phone, message, status = 'unread') {
+function insertMessage(db, direction, phone, message, status = 'unread', mediaType = null, mediaUrl = null) {
+  const timestamp = getISTTimestamp();
   const stmt = db.prepare(`
-    INSERT INTO messages (direction, phone, message, reply_status)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO messages (direction, phone, message, reply_status, media_type, media_url, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  return stmt.run(direction, phone, message, status);
+  return stmt.run(direction, phone, message, status, mediaType, mediaUrl, timestamp);
 }
 
 /**

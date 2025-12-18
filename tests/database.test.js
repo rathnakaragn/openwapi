@@ -67,6 +67,32 @@ describe('Database Operations', () => {
       const result = insertMessage(db, 'outgoing', '1234567890@s.whatsapp.net', 'Hi there', 'sent');
       expect(result.changes).toBe(1);
     });
+
+    test('should insert message with media type and url', () => {
+      const result = insertMessage(
+        db,
+        'incoming',
+        '1234567890@s.whatsapp.net',
+        'Check this image',
+        'unread',
+        'image',
+        '/path/to/image.jpg'
+      );
+      expect(result.changes).toBe(1);
+
+      const message = getMessageById(db, result.lastInsertRowid);
+      expect(message.media_type).toBe('image');
+      expect(message.media_url).toBe('/path/to/image.jpg');
+    });
+
+    test('should insert message with null media fields', () => {
+      const result = insertMessage(db, 'incoming', '1234567890@s.whatsapp.net', 'Text only', 'unread', null, null);
+      expect(result.changes).toBe(1);
+
+      const message = getMessageById(db, result.lastInsertRowid);
+      expect(message.media_type).toBeNull();
+      expect(message.media_url).toBeNull();
+    });
   });
 
   describe('getMessages', () => {

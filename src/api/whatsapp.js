@@ -1,6 +1,8 @@
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { useMultiFileAuthState, DisconnectReason, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 const { WhatsAppState } = require('./state');
 const { insertMessage, getWebhook } = require('../database');
 
@@ -40,6 +42,13 @@ async function callWebhook(url, data, logger) {
  */
 async function initializeWhatsApp(database, logger, sessionPath = './session') {
   const whatsappState = new WhatsAppState();
+
+  // Ensure media directory exists
+  const mediaPath = path.resolve('./media');
+  if (!fs.existsSync(mediaPath)) {
+    fs.mkdirSync(mediaPath, { recursive: true });
+    logger.info('Created media directory:', mediaPath);
+  }
 
   // Load auth state from session
   let authState = await useMultiFileAuthState(sessionPath);
@@ -121,19 +130,65 @@ async function initializeWhatsApp(database, logger, sessionPath = './session') {
 
         const from = msg.key.remoteJid;
 
-        // Extract text from various message types
+        // Check for image message
+        const imageMessage = msg.message.imageMessage;
+
+        // Extract text from various message types (including image caption)
         const text = msg.message.conversation ||
                     msg.message.extendedTextMessage?.text ||
+                    imageMessage?.caption ||
                     '';
 
         // Only store incoming messages (not from us)
-        if (text && !msg.key.fromMe) {
+        if (!msg.key.fromMe && (text || imageMessage)) {
           try {
-            const result = insertMessage(database, 'incoming', from, text, 'unread');
+            let mediaType = null;
+            let mediaUrl = null;
+            let imageBuffer = null;
+
+            // Download image first if present
+            if (imageMessage) {
+              try {
+                imageBuffer = await downloadMediaMessage(
+                  msg,
+                  'buffer',
+                  {},
+                  {
+                    logger,
+                    reuploadRequest: sock.updateMediaMessage
+                  }
+                );
+                mediaType = 'image';
+              } catch (downloadError) {
+                logger.error('Failed to download image:', downloadError);
+              }
+            }
+
+            // Insert message to get the ID
+            const result = insertMessage(database, 'incoming', from, text, 'unread', mediaType, null);
             const messageId = result.lastInsertRowid;
+
+            // Save image using message ID as filename
+            if (imageBuffer) {
+              const filename = `${messageId}.jpg`;
+              const filepath = path.join(mediaPath, filename);
+              fs.writeFileSync(filepath, imageBuffer);
+              mediaUrl = filepath;
+
+              // Update message with media URL
+              database.prepare('UPDATE messages SET media_url = ? WHERE id = ?').run(mediaUrl, messageId);
+
+              logger.info('Image downloaded', {
+                from,
+                messageId,
+                size: imageBuffer.length,
+                path: filepath
+              });
+            }
 
             logger.info('Message received', {
               from,
+              type: mediaType || 'text',
               preview: text.substring(0, 50) + (text.length > 50 ? '...' : '')
             });
 
@@ -146,6 +201,8 @@ async function initializeWhatsApp(database, logger, sessionPath = './session') {
                   id: messageId,
                   from: from,
                   text: text,
+                  mediaType: mediaType,
+                  mediaUrl: mediaUrl,
                   timestamp: new Date().toISOString()
                 }
               }, logger);
