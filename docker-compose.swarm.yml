@@ -21,6 +21,7 @@ services:
       # Database & Session Paths
       - DB_PATH=/app/data/messages.db
       - SESSION_PATH=/app/data/session
+      - MEDIA_PATH=/app/data/image
 
       # Note: API key is auto-generated on first start and stored in database
       # Retrieve it from: Dashboard or GET /api/v1/config endpoint

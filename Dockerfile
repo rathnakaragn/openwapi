@@ -17,7 +17,7 @@ RUN npm ci --only=production
 COPY . .
 
 # Create directories for data persistence
-RUN mkdir -p /app/session
+RUN mkdir -p /app/session /app/image
 
 # Expose port
 EXPOSE 3001
@@ -26,7 +26,8 @@ EXPOSE 3001
 ENV NODE_ENV=production \
     PORT=3001 \
     DB_PATH=/app/messages.db \
-    SESSION_PATH=/app/session
+    SESSION_PATH=/app/session \
+    MEDIA_PATH=/app/image
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

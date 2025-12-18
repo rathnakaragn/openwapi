@@ -159,7 +159,7 @@ openwapi/
 │   └── database/               # Database Layer
 │       └── index.js            # SQLite schema, queries & operations
 │
-├── media/                      # Downloaded images (auto-created)
+├── image/                      # Downloaded images (auto-created)
 │   └── {messageId}.jpg         # Images named by message ID
 │
 ├── public/                     # Web Dashboard (Alpine.js + Tailwind CSS)
@@ -199,7 +199,7 @@ Environment variables (see `.env.example`):
 | `DASHBOARD_PASSWORD` | admin123 | Dashboard password (Basic Auth) |
 | `DB_PATH` | ./messages.db | SQLite database file path |
 | `SESSION_PATH` | ./session | WhatsApp session storage path |
-| `MEDIA_PATH` | ./media | Downloaded images storage path |
+| `MEDIA_PATH` | ./image | Downloaded images storage path |
 | `NODE_ENV` | development | Environment mode (development/production) |
 
 **Note**: API key is auto-generated on first start and stored in the database.
@@ -245,7 +245,7 @@ docker-compose logs openwapi | grep "API Key:"
 
 **Data Persistence:**
 - All data stored in Docker volume `openwapi-data`
-- Includes: database, WhatsApp session
+- Includes: database, WhatsApp session, images
 - Backup: `docker run --rm -v openwapi-data:/data -v $(pwd):/backup alpine tar czf /backup/openwapi-backup.tar.gz -C /data .`
 - Restore: `docker run --rm -v openwapi-data:/data -v $(pwd):/backup alpine tar xzf /backup/openwapi-backup.tar.gz -C /data`
 
@@ -311,7 +311,7 @@ Configure webhooks to receive real-time notifications when messages arrive.
     "from": "1234567890@s.whatsapp.net",
     "text": "Message content or image caption",
     "mediaType": "image",
-    "mediaUrl": "/path/to/media/123.jpg",
+    "mediaUrl": "123.jpg",
     "timestamp": "2025-01-15T10:30:00.000Z"
   }
 }
