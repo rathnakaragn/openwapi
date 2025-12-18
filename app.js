@@ -36,7 +36,7 @@ logger.info('='.repeat(50));
 
 // Initialize WhatsApp client
 logger.info('Initializing WhatsApp client...');
-initializeWhatsApp(database, logger, config.SESSION_PATH).then((whatsappState) => {
+initializeWhatsApp(database, logger, config.SESSION_PATH, config.MEDIA_PATH).then((whatsappState) => {
   logger.info('WhatsApp client initialized');
 
   // Create API routes

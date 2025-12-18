@@ -38,16 +38,17 @@ async function callWebhook(url, data, logger) {
  * @param {object} database - Database instance
  * @param {object} logger - Logger instance
  * @param {string} sessionPath - Path to session storage
+ * @param {string} mediaPath - Path to media storage
  * @returns {Promise<WhatsAppState>} WhatsApp state instance
  */
-async function initializeWhatsApp(database, logger, sessionPath = './session') {
+async function initializeWhatsApp(database, logger, sessionPath = './session', mediaPath = './media') {
   const whatsappState = new WhatsAppState();
 
   // Ensure media directory exists
-  const mediaPath = path.resolve('./media');
-  if (!fs.existsSync(mediaPath)) {
-    fs.mkdirSync(mediaPath, { recursive: true });
-    logger.info('Created media directory:', mediaPath);
+  const resolvedMediaPath = path.resolve(mediaPath);
+  if (!fs.existsSync(resolvedMediaPath)) {
+    fs.mkdirSync(resolvedMediaPath, { recursive: true });
+    logger.info('Created media directory:', resolvedMediaPath);
   }
 
   // Load auth state from session
@@ -171,7 +172,7 @@ async function initializeWhatsApp(database, logger, sessionPath = './session') {
             // Save image using message ID as filename
             if (imageBuffer) {
               const filename = `${messageId}.jpg`;
-              const filepath = path.join(mediaPath, filename);
+              const filepath = path.join(resolvedMediaPath, filename);
               fs.writeFileSync(filepath, imageBuffer);
               mediaUrl = filename;  // Store only filename, not full path
 

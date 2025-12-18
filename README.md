@@ -199,6 +199,7 @@ Environment variables (see `.env.example`):
 | `DASHBOARD_PASSWORD` | admin123 | Dashboard password (Basic Auth) |
 | `DB_PATH` | ./messages.db | SQLite database file path |
 | `SESSION_PATH` | ./session | WhatsApp session storage path |
+| `MEDIA_PATH` | ./media | Downloaded images storage path |
 | `NODE_ENV` | development | Environment mode (development/production) |
 
 **Note**: API key is auto-generated on first start and stored in the database.
