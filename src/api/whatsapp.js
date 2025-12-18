@@ -129,7 +129,22 @@ async function initializeWhatsApp(database, logger, sessionPath = './session', m
       for (const msg of messages) {
         if (!msg.message) continue;
 
-        const from = msg.key.remoteJid;
+        // Try to get the real phone number from various sources
+        let from = msg.key.remoteJid;
+
+        // If remoteJid is a LID, try to get real number from participant
+        if (from && from.endsWith('@lid')) {
+          logger.info('LID message detected', {
+            remoteJid: from,
+            participant: msg.key.participant,
+            pushName: msg.pushName
+          });
+
+          // Check participant (used in groups, sometimes has real number)
+          if (msg.key.participant && msg.key.participant.includes('@s.whatsapp.net')) {
+            from = msg.key.participant;
+          }
+        }
 
         // Check for image message
         const imageMessage = msg.message.imageMessage;
@@ -165,8 +180,9 @@ async function initializeWhatsApp(database, logger, sessionPath = './session', m
               }
             }
 
-            // Insert message to get the ID
-            const result = insertMessage(database, 'incoming', from, text, 'unread', mediaType, null);
+            // Insert message to get the ID (include sender's display name)
+            const senderName = msg.pushName || null;
+            const result = insertMessage(database, 'incoming', from, text, 'unread', mediaType, null, senderName);
             const messageId = result.lastInsertRowid;
 
             // Save image using message ID as filename

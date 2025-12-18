@@ -53,6 +53,101 @@
         </div>
       </div>
 
+      <!-- Inbox Messages Card -->
+      <div class="bg-gray-50 rounded-lg p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-gray-800 font-semibold">Inbox Messages</h3>
+          <button @click="loadInbox" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+            Refresh
+          </button>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="inboxMessages.length === 0" class="text-center py-8">
+          <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-2.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+          </svg>
+          <p class="text-gray-500 text-sm">No unread messages</p>
+        </div>
+
+        <!-- Messages List -->
+        <div x-show="inboxMessages.length > 0" class="space-y-3 max-h-96 overflow-y-auto">
+          <template x-for="msg in inboxMessages" :key="msg.id">
+            <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
+              <!-- Header: Name/Phone & Time -->
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <span class="text-sm font-semibold text-gray-800" x-text="getSenderDisplay(msg)"></span>
+                  <span x-show="msg.sender_name && msg.sender_name.length > 1" class="text-xs text-gray-500 ml-2" x-text="formatPhone(msg.phone)"></span>
+                </div>
+                <span class="text-xs text-gray-500" x-text="formatTime(msg.timestamp) || '-'"></span>
+              </div>
+
+              <!-- Image Preview (if exists) -->
+              <div x-show="msg.media_type === 'image' && msg.media_url" class="mb-2">
+                <img :src="'/image/' + msg.media_url"
+                     @click="openImageModal('/image/' + msg.media_url)"
+                     class="max-w-full max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition"
+                     alt="Attached image">
+              </div>
+
+              <!-- Message Text -->
+              <p class="text-gray-700 text-sm mb-3 whitespace-pre-wrap" x-text="msg.message || (msg.media_type === 'image' ? '(Image)' : '(No content)')"></p>
+
+              <!-- Actions -->
+              <div class="flex gap-2">
+                <button @click="openReplyModal(msg)"
+                        class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700 transition">
+                  Reply
+                </button>
+                <button @click="markAsIgnored(msg.id)"
+                        class="bg-gray-200 text-gray-700 text-xs px-3 py-1.5 rounded hover:bg-gray-300 transition">
+                  Ignore
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Reply Modal -->
+      <div x-show="showReplyModal" x-transition class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6" @click.outside="showReplyModal = false">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Reply to Message</h3>
+
+          <!-- Original Message Preview -->
+          <div class="bg-gray-50 rounded-lg p-3 mb-4">
+            <p class="text-xs text-gray-500 mb-1">Replying to <span x-text="replyingTo ? getSenderDisplay(replyingTo) : ''"></span></p>
+            <p class="text-sm text-gray-700" x-text="replyingTo?.message || '(Image only)'"></p>
+          </div>
+
+          <!-- Reply Input -->
+          <textarea x-model="replyText"
+                    placeholder="Type your reply..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                    rows="3"></textarea>
+
+          <!-- Modal Actions -->
+          <div class="flex justify-end gap-2 mt-4">
+            <button @click="showReplyModal = false"
+                    class="px-4 py-2 text-gray-600 text-sm hover:text-gray-800 transition">
+              Cancel
+            </button>
+            <button @click="sendReply"
+                    :disabled="!replyText.trim()"
+                    :class="!replyText.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'"
+                    class="px-4 py-2 text-white text-sm rounded-lg transition">
+              Send Reply
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image Modal -->
+      <div x-show="showImageModal" x-transition class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" @click="showImageModal = false">
+        <img :src="modalImageUrl" class="max-w-full max-h-full rounded-lg" alt="Full size image">
+      </div>
+
       <!-- API Key Card -->
       <div class="bg-gray-50 rounded-lg p-6 mb-6">
         <h3 class="text-gray-800 font-semibold mb-3">API Key</h3>
@@ -229,6 +324,12 @@
         webhookUrl: '',
         webhookInput: '',
         baseUrl: window.location.origin,
+        inboxMessages: [],
+        showReplyModal: false,
+        replyingTo: null,
+        replyText: '',
+        showImageModal: false,
+        modalImageUrl: '',
 
         init() {
           if (!this.apiKey || !this.dashboardAuth) {
@@ -237,6 +338,7 @@
           }
           this.loadStatus();
           this.loadWebhook();
+          this.loadInbox();
         },
 
         async loadStatus() {
@@ -411,6 +513,115 @@
             this.error = error.message || 'Failed to delete webhook';
             setTimeout(() => { this.error = ''; }, 3000);
           }
+        },
+
+        async loadInbox() {
+          try {
+            const response = await fetch('/api/v1/inbox', {
+              headers: { 'X-API-Key': this.apiKey }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+              // Filter out any malformed messages
+              this.inboxMessages = data.data.filter(msg => msg && msg.id && msg.phone);
+              this.newMessageCount = this.inboxMessages.length;
+            }
+          } catch (error) {
+            console.error('Failed to load inbox:', error);
+          }
+        },
+
+        formatPhone(phone) {
+          if (!phone) return '-';
+          // Remove all suffixes (@lid, @s.whatsapp.net, etc.) and show just the number
+          return phone.replace(/@.*$/, '');
+        },
+
+        getSenderDisplay(msg) {
+          // Use sender_name if it's meaningful (more than 1 char and not just punctuation)
+          if (msg.sender_name && msg.sender_name.length > 1 && /[a-zA-Z0-9]/.test(msg.sender_name)) {
+            return msg.sender_name;
+          }
+          return this.formatPhone(msg.phone) || 'Unknown';
+        },
+
+        formatTime(timestamp) {
+          if (!timestamp) return '';
+          const date = new Date(timestamp);
+          const now = new Date();
+          const isToday = date.toDateString() === now.toDateString();
+
+          if (isToday) {
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          }
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        },
+
+        openReplyModal(msg) {
+          this.replyingTo = msg;
+          this.replyText = '';
+          this.showReplyModal = true;
+        },
+
+        async sendReply() {
+          if (!this.replyText.trim() || !this.replyingTo) return;
+
+          try {
+            const response = await fetch(`/api/v1/messages/${this.replyingTo.id}/reply`, {
+              method: 'POST',
+              headers: {
+                'X-API-Key': this.apiKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ message: this.replyText })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || 'Failed to send reply');
+            }
+
+            this.success = 'Reply sent successfully!';
+            this.showReplyModal = false;
+            this.replyText = '';
+            this.replyingTo = null;
+            await this.loadInbox();
+            setTimeout(() => { this.success = ''; }, 3000);
+          } catch (error) {
+            this.error = error.message || 'Failed to send reply';
+            setTimeout(() => { this.error = ''; }, 3000);
+          }
+        },
+
+        async markAsIgnored(messageId) {
+          try {
+            const response = await fetch(`/api/v1/messages/${messageId}/status`, {
+              method: 'PATCH',
+              headers: {
+                'X-API-Key': this.apiKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ status: 'ignored' })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || 'Failed to update status');
+            }
+
+            await this.loadInbox();
+          } catch (error) {
+            this.error = error.message || 'Failed to mark as ignored';
+            setTimeout(() => { this.error = ''; }, 3000);
+          }
+        },
+
+        openImageModal(url) {
+          this.modalImageUrl = url;
+          this.showImageModal = true;
         }
       }
     }

@@ -16,6 +16,7 @@ function initializeDatabase(dbPath = './messages.db') {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       direction TEXT NOT NULL,
       phone TEXT NOT NULL,
+      sender_name TEXT,
       message TEXT NOT NULL,
       reply_status TEXT DEFAULT 'unread',
       media_type TEXT,
@@ -46,6 +47,13 @@ function initializeDatabase(dbPath = './messages.db') {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Migration: Add sender_name column if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE messages ADD COLUMN sender_name TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   return db;
 }
@@ -79,15 +87,16 @@ function getISTTimestamp() {
  * @param {string} status - Message status
  * @param {string|null} mediaType - Type of media ('image', etc.) or null
  * @param {string|null} mediaUrl - Path to media file or URL, or null
+ * @param {string|null} senderName - Sender's display name (pushName)
  * @returns {object} Insert result
  */
-function insertMessage(db, direction, phone, message, status = 'unread', mediaType = null, mediaUrl = null) {
+function insertMessage(db, direction, phone, message, status = 'unread', mediaType = null, mediaUrl = null, senderName = null) {
   const timestamp = getISTTimestamp();
   const stmt = db.prepare(`
-    INSERT INTO messages (direction, phone, message, reply_status, media_type, media_url, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO messages (direction, phone, sender_name, message, reply_status, media_type, media_url, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  return stmt.run(direction, phone, message, status, mediaType, mediaUrl, timestamp);
+  return stmt.run(direction, phone, senderName, message, status, mediaType, mediaUrl, timestamp);
 }
 
 /**

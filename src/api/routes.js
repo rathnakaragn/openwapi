@@ -245,6 +245,7 @@ function createRoutes(database, whatsappState, config, logger) {
           id,
           direction as type,
           phone,
+          sender_name,
           message,
           reply_status as status,
           media_type,

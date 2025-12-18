@@ -18,6 +18,8 @@ logger.info('='.repeat(50));
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+// Serve images from media folder
+app.use('/image', express.static(path.resolve(config.MEDIA_PATH)));
 
 // Initialize database
 logger.info('Initializing database...');
