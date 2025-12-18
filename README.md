@@ -5,15 +5,17 @@ Open WhatsApp API - Self-hosted solution for automated message handling. Built w
 ## Features
 
 - **WhatsApp Integration**: Receive and reply to WhatsApp messages via Baileys
+- **Image Support**: Send and receive images with captions
 - **REST API**: Comprehensive API with X-API-Key authentication
 - **Web Dashboard**: Login, QR scanning, message management (Alpine.js + Tailwind CSS)
 - **Webhooks**: Real-time notifications for incoming messages
 - **SQLite Database**: Message storage with WAL mode for performance
+- **IST Timezone**: All timestamps saved in Indian Standard Time (24-hour format)
 - **Session Persistence**: Multi-file auth state storage
 - **Auto-reconnection**: Automatic reconnection with exponential backoff
 - **Docker Ready**: Full Docker and Docker Swarm support
 - **Production Ready**: PM2 configuration, health checks, graceful shutdown
-- **Test Suite**: Comprehensive Jest tests (40 test cases)
+- **Test Suite**: Comprehensive Jest tests (45 test cases)
 
 ## Quick Start
 
@@ -88,11 +90,25 @@ curl -u admin:admin123 http://localhost:3001/api/v1/config
 # Get inbox messages
 curl -H "X-API-Key: YOUR_KEY" http://localhost:3001/api/v1/inbox
 
-# Reply to a message
+# Reply with text
 curl -X POST \
   -H "X-API-Key: YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello!"}' \
+  http://localhost:3001/api/v1/messages/1/reply
+
+# Reply with image (URL)
+curl -X POST \
+  -H "X-API-Key: YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Check this!", "image": "https://example.com/photo.jpg"}' \
+  http://localhost:3001/api/v1/messages/1/reply
+
+# Reply with image (base64)
+curl -X POST \
+  -H "X-API-Key: YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"image": "iVBORw0KGgo..."}' \
   http://localhost:3001/api/v1/messages/1/reply
 
 # Update message status
@@ -142,6 +158,9 @@ openwapi/
 │   │
 │   └── database/               # Database Layer
 │       └── index.js            # SQLite schema, queries & operations
+│
+├── media/                      # Downloaded images (auto-created)
+│   └── {messageId}.jpg         # Images named by message ID
 │
 ├── public/                     # Web Dashboard (Alpine.js + Tailwind CSS)
 │   ├── index.html              # Root redirect to login
@@ -289,7 +308,9 @@ Configure webhooks to receive real-time notifications when messages arrive.
   "message": {
     "id": 123,
     "from": "1234567890@s.whatsapp.net",
-    "text": "Message content",
+    "text": "Message content or image caption",
+    "mediaType": "image",
+    "mediaUrl": "/path/to/media/123.jpg",
     "timestamp": "2025-01-15T10:30:00.000Z"
   }
 }
@@ -359,9 +380,11 @@ npm run test:watch
 - `id` - Auto-increment primary key
 - `direction` - 'incoming' or 'outgoing'
 - `phone` - WhatsApp JID (phone@s.whatsapp.net)
-- `message` - Text content
+- `message` - Text content or image caption
 - `reply_status` - 'unread', 'replied', 'ignored', 'sent'
-- `created_at` - Timestamp
+- `media_type` - 'image' or null for text-only
+- `media_url` - File path to saved image or null
+- `created_at` - Timestamp (IST 24-hour format)
 
 **Note:** Dashboard "Total Messages" count only shows incoming messages.
 
@@ -387,7 +410,7 @@ npm run test:watch
 ## Limitations & Design Decisions
 
 ### Current Limitations (v1.0)
-- **Text-only messages** - No media support (images, videos, documents)
+- **Images only** - No support for videos, documents, audio (images supported)
 - **Reply-only mode** - Cannot initiate new conversations (only reply to incoming messages)
 - **Single API key** - One shared key for all API requests
 - **No rate limiting** - No built-in request throttling
@@ -406,7 +429,8 @@ This is a **v1.0 MVP** focused on:
 
 ## Planned Features (v2.0+)
 
-- Media file support (images, videos, documents, audio)
+- Additional media support (videos, documents, audio)
+- Send messages to new numbers (not just replies)
 - Webhook retry mechanism with exponential backoff
 - Multiple API keys with permissions
 - Rate limiting per API key
